@@ -1,0 +1,6 @@
+aiogram==3.18.0
+gspread==6.2.0
+google-api-core==2.24.2
+google-api-python-client==2.164.0
+loguru==0.7.3
+dotenv>=0.9.9
