@@ -70,7 +70,7 @@ async def getUnsentMessages() -> list[tuple[int, str, str, str]]:
     if not unsent_rows:
         return []
     
-    rows = await worksheet.batch_get([f'B{i}:E{i}' for i in unsent_rows])
+    rows = await worksheet.batch_get([f'B{i}:F{i}' for i in unsent_rows])
 
     result = []
     for i, r in zip(unsent_rows, rows):
