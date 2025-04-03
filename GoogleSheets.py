@@ -17,6 +17,7 @@ import gspread_asyncio
 from google.oauth2.service_account import Credentials 
 from config import GOOGLE_SHEETS_CREDENTIALS_FILE, MAIN_WORK_SHEET_ID, SPREADSHEET_ID
 from gspread import exceptions as gExceptions
+from gspread.utils import DateTimeOption, ValueRenderOption
 from loguru import logger
 import re
 
@@ -70,11 +71,18 @@ async def getUnsentMessages() -> list[tuple[int, str, str, str]]:
     if not unsent_rows:
         return []
     
-    rows = await worksheet.batch_get([f'B{i}:F{i}' for i in unsent_rows])
+    rows = await worksheet.batch_get([f'B{i}:E{i}' for i in unsent_rows]) 
 
     result = []
+
     for i, r in zip(unsent_rows, rows):
-        del r[0][2] # remove the D column (Отправка)
+
+        if len(r[0]) < 4: # the last(E) column is not filled (the D may be empty too)
+            r[0].append('01.01.1900 00:00:00')
+
+        if len(r[0]) == 4:
+            del r[0][2] # remove the D column (Отправка)
+
         result.append((int(i), *r[0]))
     
     return result
@@ -105,3 +113,19 @@ async def setMessageAsSent(row_id: int, sent_date: datetime):
     values = [['Да', sent_date.strftime('%d.%m.%Y %H:%M:%S')]]
 
     await worksheet.update(values, cell_range)
+
+async def markChatAsNotFound(row_id: int):
+    '''Fill the B column(chat id) in the row as red'''
+
+    gc = await gc_manager.authorize()
+    worksheet = await _getAsyncioGspreadWorksheet(gc)
+
+    cell_range = 'B{0}:B{0}'.format(row_id)
+    
+    await worksheet.format(cell_range, {
+        "backgroundColor": {
+          "red": 1.0,
+          "green": 0.8,
+          "blue": 0.8,
+        }}
+    )

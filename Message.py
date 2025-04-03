@@ -4,7 +4,7 @@ __doc__ = '''This is a module that configures the basic Message model.
 '''
 from pydantic import BaseModel, field_validator
 from datetime import datetime
-from GoogleSheets import getUnsentMessages, setMessageAsSent
+import GoogleSheets as gsh
 from loguru import logger
 import re
 
@@ -25,8 +25,14 @@ class Message(BaseModel):
     is_sent: bool
 
     @field_validator('due_date')
-    def validate_due_date(cls, value: str) -> datetime:
-        return datetime.strptime(value, '%d.%m.%Y %H:%M:%S')
+    def validate_due_date(cls, value: str|int) -> datetime:
+        if isinstance(value, str):
+            try:
+                return datetime.strptime(value, '%d.%m.%y %H:%M:%S')
+            except:
+                return datetime.strptime(value, '%d.%m.%Y %H:%M:%S')
+        elif isinstance(value, int):
+            return datetime.fromtimestamp(value)
 
     @field_validator('chat')
     def validate_chat(cls, value: str|int) -> str:
@@ -65,7 +71,7 @@ class Message(BaseModel):
         raise ValueError(f'Invalid chat: {value}. Must be str or int')
 
     async def extractUnsentMessages() -> list[Message]:
-        unsent_messages = await getUnsentMessages()
+        unsent_messages = await gsh.getUnsentMessages()
 
         result = []
         for row_id, chat_id, message, due_date in unsent_messages:
@@ -78,10 +84,14 @@ class Message(BaseModel):
             
         return result
         
-    async def setAsSent(self):
+    async def setAsSent(self, sent_date: datetime|None):
         self.is_sent = True
-        self.due_date = datetime.now()
-        await setMessageAsSent(self.row_id, self.due_date)
+        self.due_date = sent_date if sent_date else datetime.now()
+
+        await gsh.setMessageAsSent(self.row_id, self.due_date)
+
+    async def markChatAsNotFound(self):
+        await gsh.markChatAsNotFound(self.row_id)
 
     def __str__(self):
         return f'Message(row_id={self.row_id}, chat_id={self.chat}, message="{self.message}", '\

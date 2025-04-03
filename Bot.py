@@ -1,4 +1,5 @@
 from aiogram import Bot
+from aiogram.exceptions import TelegramBadRequest
 from config import BOT_TOKEN
 from Message import Message
 from loguru import logger
@@ -22,22 +23,29 @@ async def sendMessage(msg: Message):
     """
 
     if datetime.now() < msg.due_date:
-        logger.info('Due date is not now')
         return
+    
 
     chat = msg.chat 
     message = msg.message
 
-    if not msg.is_sent:
+    actual_date = None
+
+    if not msg.is_sent and msg.message:
         try:
-            await bot.send_message(chat, text=message, parse_mode='markdown')
-        except:
-            logger.opt(exception=True).error('Failed to send a message')
+            sent_message = await bot.send_message(chat, text=message, parse_mode='markdown')
+            actual_date = sent_message.date
+        except TelegramBadRequest as e:
+            if 'chat not found' in e.message:
+                logger.info(f'Chat {chat} not found')
+                await msg.markChatAsNotFound()
+            else:
+                logger.opt(exception=True).error('Failed to send a message')
             return
     else:
         logger.info(f'Message {message} has already been sent')
 
     try:
-        await msg.setAsSent()
+        await msg.setAsSent(actual_date)
     except:
         logger.opt(exception=True).error('Failed to set message as sent')
