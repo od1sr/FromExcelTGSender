@@ -114,7 +114,7 @@ async def setMessageAsSent(row_id: int, sent_date: datetime):
 
     await worksheet.update(values, cell_range)
 
-async def markChatAsNotFound(row_id: int):
+async def markChatAs(found: bool, row_id: int):
     '''Fill the B column(chat id) in the row as red'''
 
     gc = await gc_manager.authorize()
@@ -124,6 +124,10 @@ async def markChatAsNotFound(row_id: int):
     
     await worksheet.format(cell_range, {
         "backgroundColor": {
+          "red": 1.0,
+          "green": 1.,
+          "blue": 1.,
+        } if found else {
           "red": 1.0,
           "green": 0.8,
           "blue": 0.8,

@@ -26,24 +26,30 @@ async def sendMessage(msg: Message):
         return
     
 
-    chat = msg.chat 
     message = msg.message
 
-    actual_date = None
+    sent_message= None
 
     if not msg.is_sent and msg.message:
-        try:
-            sent_message = await bot.send_message(chat, text=message, parse_mode='markdown')
-            actual_date = sent_message.date
-        except TelegramBadRequest as e:
-            if 'chat not found' in e.message:
-                logger.info(f'Chat {chat} not found')
-                await msg.markChatAsNotFound()
+        for chat in (msg.chat,) if not msg.chat.isdigit() else (f'-100{msg.chat}', f'-{msg.chat}'):
+            try:
+                sent_message = await bot.send_message(chat, text=message, parse_mode='markdown')
+            except TelegramBadRequest as e:
+                if 'chat not found' not in e.message:
+                    logger.opt(exception=True).error('Error while sending message')            
+            except:
+                logger.opt(exception=True).error('Error while sending message')
             else:
-                logger.opt(exception=True).error('Failed to send a message')
-            return
+                break
     else:
-        logger.info(f'Message {message} has already been sent')
+        logger.info(f'Message at row {msg.row_id} has already been sent')
+    
+    if sent_message is None:
+        logger.info(f'Chat {chat} not found')
+        await msg.markChatAsNotFound()
+        return
+    
+    actual_date = sent_message.date
 
     try:
         await msg.setAsSent(actual_date)

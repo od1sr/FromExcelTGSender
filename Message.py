@@ -37,14 +37,14 @@ class Message(BaseModel):
     @field_validator('chat')
     def validate_chat(cls, value: str|int) -> str:
         if isinstance(value, str):
-            if value[0] == '-' and value[1:].isdigit(): # -100\d+
-                if not value.startswith('-100'):
-                    raise ValueError(f'Invalid chat_id: {value}')
-                    
-                return value
+            if value[0] == '-' and value[1:].isdigit(): # -100\d+ or -\d+                    
+                if value.startswith('-100'):
+                    return value.removeprefix('-100')
+                
+                return value[1:]
         
             if value.isdigit(): #\d+
-                return f'-100{value}'
+                return value
 
             chat = re.findall(r'@\w+', value) # nickname
             if chat:
@@ -89,9 +89,10 @@ class Message(BaseModel):
         self.due_date = sent_date if sent_date else datetime.now()
 
         await gsh.setMessageAsSent(self.row_id, self.due_date)
+        await gsh.markChatAs(True, self.row_id)
 
     async def markChatAsNotFound(self):
-        await gsh.markChatAsNotFound(self.row_id)
+        await gsh.markChatAs(False, self.row_id)
 
     def __str__(self):
         return f'Message(row_id={self.row_id}, chat_id={self.chat}, message="{self.message}", '\
